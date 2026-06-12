@@ -1,0 +1,4 @@
+Time(s),X(cm),Y(cm),Heading(deg),TotalDist(cm),Speed(cm/s),Ultrasonic(cm)
+10,111.5,100.0,0,63,0.0,43
+20,101.5,104.2,23,88,0.0,54
+30,101.5,104.2,23,88,0.0,53
