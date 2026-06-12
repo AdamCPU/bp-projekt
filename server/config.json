@@ -1,0 +1,83 @@
+{
+  "mapboxToken": "PRIDAJTE-MAPBOX-TOKEN",
+  "pwmFrequencyHz": 100,
+  "motors": {
+    "upperLeft": {
+      "in1": 20,
+      "in2": 21,
+      "pwm": 0
+    },
+    "lowerLeft": {
+      "in1": 22,
+      "in2": 23,
+      "pwm": 1
+    },
+    "upperRight": {
+      "in1": 24,
+      "in2": 25,
+      "pwm": 12
+    },
+    "lowerRight": {
+      "in1": 26,
+      "in2": 27,
+      "pwm": 13
+    }
+  },
+  "servos": {
+    "tilt": 5,
+    "panY": 6,
+    "panX": 7
+  },
+  "calibration": {
+    "turnDeadTimeSec": 0.22,
+    "pwmTable": [
+      {
+        "pwm": 20,
+        "vCmPerSec": 13.5,
+        "omegaRadPerSec": 0.436
+      },
+      {
+        "pwm": 40,
+        "vCmPerSec": 31,
+        "omegaRadPerSec": 2.269
+      },
+      {
+        "pwm": 60,
+        "vCmPerSec": 51.5,
+        "omegaRadPerSec": 3.491
+      },
+      {
+        "pwm": 80,
+        "vCmPerSec": 71,
+        "omegaRadPerSec": 5.498
+      },
+      {
+        "pwm": 100,
+        "vCmPerSec": 91,
+        "omegaRadPerSec": 7.418
+      }
+    ],
+    "trimOffset": 5
+  },
+  "floorPlan": {
+    "imagePath": "/floorplan.png",
+    "imageWidthPx": 1280,
+    "imageHeightPx": 1280,
+    "cmPerPixel": 29.885950600637617,
+    "startXCm": 20473.788682424183,
+    "startYCm": 14660.07475616865,
+    "startThetaRad": -1.6355206082104887
+  },
+  "camera": {
+    "url": "http://192.168.4.1:8081",
+    "enabled": true
+  },
+  "ultrasonic": {
+    "trigPin": 14,
+    "echoPin": 4,
+    "intervalMs": 200
+  },
+  "server": {
+    "port": 80
+  }
+}

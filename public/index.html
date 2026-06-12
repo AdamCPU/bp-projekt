@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="sk">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <title>Robot Pi</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+
+<header>
+    <span id="status" class="status disconnected">Odpojený</span>
+    <nav id="main-nav">
+        <button class="nav-btn active" data-page="dashboard">Prehľad</button>
+        <button class="nav-btn" data-page="map">Mapa</button>
+        <button class="nav-btn" data-page="calibration">Kalibrácia</button>
+        <button class="nav-btn" data-page="log">Záznamy</button>
+    </nav>
+    <div id="header-stats">
+        <span id="mode">IDLE</span>
+        <span id="pose">x=0 y=0 θ=0°</span>
+        <span id="distance">--</span>
+        <span id="speed">0 cm/s</span>
+        <span id="travelled">0 cm</span>
+        <span id="map-scale">-- cm/px</span>
+    </div>
+</header>
+
+<!-- stranka prehladovy panel -->
+<div id="page-dashboard" class="page">
+    <div id="dash-layout">
+        <section id="map-wrap">
+            <canvas id="map" width="1000" height="700"></canvas>
+        </section>
+        <aside id="side-panel">
+            <section id="camera-wrap">
+                <img id="camera" alt="kamera">
+            </section>
+            <section id="controls">
+                <div id="dpads-row">
+                    <div class="dpad-group">
+                        <span class="dpad-label">POHYB</span>
+                        <span class="dpad-label">Ovládanie auta</span>
+                        <div class="dpad">
+                            <button data-dir="ahead">▲</button>
+                            <div>
+                                <button data-dir="left">◀</button>
+                                <button data-dir="stop" class="stop">■</button>
+                                <button data-dir="right">▶</button>
+                            </div>
+                            <button data-dir="back">▼</button>
+                        </div>
+                    </div>
+                    <div class="dpad-group">
+                        <span class="dpad-label">Kamera</span>
+                        <span id="cam-angles" style="font-size:0.7rem;color:#666;text-align:center;min-height:1em"></span>
+                        <div class="dpad">
+                            <button data-cam="up">▲</button>
+                            <div>
+                                <button data-cam="left">◀</button>
+                                <button data-cam="center" class="stop">⊙</button>
+                                <button data-cam="right">▶</button>
+                            </div>
+                            <button data-cam="down">▼</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <label>PWM <span id="pwm-display">30</span>%
+                        <input id="pwm" type="range" min="10" max="100" value="30">
+                    </label>
+                    <button id="reset-pose">Resetovať polohu</button>
+                    <button id="clear-trail">Vymazať stopu</button>
+                </div>
+            </section>
+        </aside>
+    </div>
+</div>
+
+<!-- stranka mapa -->
+<div id="page-map" class="page hidden">
+    <div id="map-page-content">
+        <div id="map-page-left">
+            <h2>Pôdorys</h2>
+            <div class="info-grid">
+                <span>Mierka</span><span id="info-scale">—</span>
+                <span>Veľkosť</span><span id="info-size">—</span>
+                <span>Štart</span><span id="info-start">—</span>
+            </div>
+            <button id="btn-setup" class="primary-btn">Nastaviť mapu ▶</button>
+        </div>
+        <div id="map-page-right">
+            <img id="map-preview-img" alt="Žiadny pôdorys nie je načítaný">
+        </div>
+    </div>
+</div>
+
+<!-- stranka kalibracia -->
+<div id="page-calibration" class="page hidden">
+    <div id="calib-page">
+
+        <section class="calib-section">
+            <h3>Test a meranie</h3>
+            <p class="calib-note">Nastavte PWM, pohybujte alebo otočte robota, zmerajte pravítkom alebo uhlomerom, potom uložte.</p>
+            <div class="calib-row">
+                <span>PWM</span>
+                <input id="cal-test-pwm" type="number" min="10" max="100" value="30"> %
+            </div>
+            <div class="calib-row">
+                <span>Lineárne</span>
+                <button id="btn-cal-linear">▶ Jazdiť 2s</button>
+                <input id="cal-linear-cm" type="number" min="1" step="0.5" placeholder="namerané cm"> cm
+                <button id="btn-cal-linear-save">Uložiť</button>
+                <span id="cal-linear-result" class="calib-result"></span>
+            </div>
+            <div class="calib-row">
+                <span>Otáčanie</span>
+                <button id="btn-cal-turn">↺ Otočiť 1s</button>
+                <input id="cal-turn-deg" type="number" min="1" step="1" placeholder="namerané °"> °
+                <button id="btn-cal-turn-save">Uložiť</button>
+                <span id="cal-turn-result" class="calib-result"></span>
+            </div>
+        </section>
+
+        <section class="calib-section">
+            <h3>Kalibračná tabuľka</h3>
+            <p class="calib-note">Rýchlosti pri rôznych hodnotách PWM — medziľahlé hodnoty sa interpolujú automaticky.</p>
+            <table id="pwm-cal-table">
+                <thead>
+                    <tr>
+                        <th>PWM %</th>
+                        <th>Lineárna (cm/s)</th>
+                        <th>Otáčanie (rad/s)</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="pwm-cal-tbody">
+                    <tr><td colspan="4" class="no-entries">Žiadne záznamy — skalibrujte vyššie</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="calib-section">
+            <h3>Mŕtvy čas otáčania</h3>
+            <p class="calib-note">Čas v sekundách, ktorý motory potrebujú na rozbeh pred otočením robota. Zvýšte ak sa mapa otáča príliš, znížte ak málo.</p>
+            <div class="calib-row">
+                <span>Mŕtvy čas</span>
+                <input id="dead-time-input" type="number" min="0" max="0.5" step="0.01" value="0.15"> s
+                <button id="btn-dead-time-save">Uložiť</button>
+                <span id="dead-time-result" class="calib-result"></span>
+            </div>
+        </section>
+
+        <section class="calib-section">
+            <h3>Korekcia priameho pohybu</h3>
+            <p class="calib-note">Ak robot odbočuje doľava alebo doprava, upravte toto na kompenzáciu.</p>
+            <div class="calib-row">
+                <span>Offset</span>
+                <span class="trim-label">R</span>
+                <input id="trim-slider" type="range" min="-20" max="20" step="1" value="0">
+                <span class="trim-label">L</span>
+                <span id="trim-value">0</span>
+                <button id="btn-trim-save">Uložiť</button>
+                <span id="trim-result" class="calib-result"></span>
+            </div>
+        </section>
+
+    </div>
+</div>
+
+<!-- stranka zaznamy -->
+<div id="page-log" class="page hidden">
+    <div id="log-page">
+        <div id="log-toolbar">
+            <button id="btn-log-toggle" class="primary-btn">▶ Spustiť</button>
+            <span id="log-status" style="font-size:0.82rem;color:#555">Zastavený</span>
+            <span id="log-count">0 záznamov</span>
+            <button id="btn-log-clear">Vymazať</button>
+            <button id="btn-log-snapshots">Stiahnuť snímky</button>
+            <button id="btn-log-export" class="primary-btn">Exportovať CSV</button>
+        </div>
+        <div id="log-table-wrap">
+            <table id="log-table">
+                <thead>
+                    <tr>
+                        <th>Čas</th>
+                        <th>X (cm)</th>
+                        <th>Y (cm)</th>
+                        <th>Smer</th>
+                        <th>Celk. vzd.</th>
+                        <th>Rýchlosť</th>
+                        <th>Ultrazvuk</th>
+                        <th>Snímka</th>
+                    </tr>
+                </thead>
+                <tbody id="log-tbody">
+                    <tr><td colspan="8" class="no-entries">Žiadne dáta — záznamy každých 10 s</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- nastavenie mapy - cela obrazovka, fazy 1 az 3 -->
+<div id="setup-overlay" class="hidden">
+
+    <!-- faza 1 vyber zdroja obrazku -->
+    <div id="setup-map-screen">
+        <div id="map-top-bar">
+            <div id="map-mode-select">
+                <button id="mode-btn-upload" class="mode-btn active">Nahrať obrázok</button>
+                <button id="mode-btn-google" class="mode-btn">Použiť mapu</button>
+            </div>
+            <button id="btn-cancel-setup">✕ Zrušiť</button>
+        </div>
+        <div id="upload-panel">
+            <label id="upload-dropzone" for="upload-input">
+                <span class="drop-text">Kliknite alebo presuňte obrázok pôdorysu</span>
+                <input type="file" id="upload-input" accept="image/*">
+            </label>
+            <div id="upload-scale-row">
+                <label>Mierka: <input id="upload-cm-per-pixel" type="number" step="0.01" min="0.001" value="2"> cm / px</label>
+                <span class="scale-hint">Dá sa presnejšie nastaviť v ďalšom kroku pomocou meracieho nástroja</span>
+            </div>
+        </div>
+        <div id="google-panel" class="hidden">
+            <div id="map-search-bar">
+                <input id="map-search" type="text" placeholder="Hľadať adresu…">
+                <button id="btn-map-search">Hľadať</button>
+                <button id="btn-use-building">Kresliť výber</button>
+                <button id="btn-clear-selection" class="hidden">✕ Vymazať</button>
+                <span id="map-draw-hint" class="hidden" style="color:#ffcc00;font-size:0.85em">Kliknite a potiahnite na mape pre výber budovy</span>
+            </div>
+            <div id="gmap"></div>
+        </div>
+    </div>
+
+    <!-- faza 2 kreslenie stien -->
+    <div id="setup-draw-screen" class="hidden">
+        <div id="draw-toolbar">
+            <button id="tool-wall" class="active">Stena</button>
+            <button id="tool-eraser">Guma</button>
+            <button id="tool-calibrate">Kalibrovať</button>
+            <button id="btn-clear-walls">Vymazať všetko</button>
+            <button id="btn-back-to-map">◀ Späť</button>
+            <span id="draw-hint">Kliknite a potiahnite pre kreslenie stien</span>
+            <span id="calib-hint" class="hidden">
+                Vzdialenosť: <input id="calib-dist" type="number" step="0.1" min="0.01" placeholder="m"> m
+                <button id="btn-apply-calib">Použiť</button>
+                <button id="btn-cancel-calib">✕</button>
+            </span>
+            <span id="cmp-display"></span>
+            <button id="btn-confirm-map">Ďalej: Nastaviť štart ▶</button>
+        </div>
+        <div id="draw-canvas-wrap">
+            <canvas id="draw-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- faza 3 umiestnenie startovej polohy robota -->
+    <div id="setup-pose-screen" class="hidden">
+        <div id="pose-toolbar">
+            <span id="pose-hint">Kliknite pre umiestnenie — pohybujte myšou pre smer — stlačte <kbd>Medzerník</kbd> pre uzamknutie</span>
+            <span id="pose-lock-indicator"></span>
+            <button id="btn-back-to-draw">◀ Späť</button>
+            <button id="btn-confirm-pose">✓ Uložiť mapu</button>
+        </div>
+        <div id="pose-canvas-wrap">
+            <canvas id="pose-canvas"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
